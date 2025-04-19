@@ -83,7 +83,7 @@ public class UserDao {
 
     // Method to log authentication attempts
     public void logAuthentication(int userId, String username, String status, String activity) throws SQLException {
-        String sql = "INSERT INTO auth_logs (user_id, username, status, timestamp, activity) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO logs_activity (user_id, username, status, timestamp, activity) VALUES (?, ?, ?, ?, ?)";
 
         try (Connection conn = db_connect.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

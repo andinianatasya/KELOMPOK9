@@ -23,10 +23,13 @@ public class ProdukUserView {
 
     private User currentUser;
     private Stage stage;
+    private ShoppingCart cart;
 
     public ProdukUserView(User user, Stage stage) {
         this.currentUser = user;
         this.stage = stage;
+        this.cart = ShoppingCart.getInstance();
+        this.cart.setCurrentUser(user);
         initialize();
     }
 
@@ -49,8 +52,11 @@ public class ProdukUserView {
         ImageView cartIcon = new ImageView(cartImage);
         cartIcon.setFitHeight(30);
         cartIcon.setPreserveRatio(true);
+
+        // Update to show cart item count
         Label cartCountLabel = new Label("0");
-        cartCountLabel.setStyle("-fx-background-color: green; -fx-text-fill: white; -fx-padding: 2px 6px; -fx-background-radius: 10;");
+        cartCountLabel.setStyle("-fx-background-color: red; -fx-text-fill: white; -fx-padding: 2px 6px; -fx-background-radius: 10;");
+
         StackPane cartPane = new StackPane();
         cartPane.getChildren().add(cartIcon);
         StackPane.setAlignment(cartCountLabel, Pos.TOP_RIGHT);
@@ -78,17 +84,12 @@ public class ProdukUserView {
         userIcon.setFitHeight(30);
         userIcon.setPreserveRatio(true);
 
-        Image userImage = new Image(getClass().getResourceAsStream("/img/user.png"));
-        ImageView userIcon = new ImageView(userImage);
-        userIcon.setFitHeight(30);
-        userIcon.setPreserveRatio(true);
-
         userIcon.setOnMouseClicked(event -> {
             Dialog<String> dialog = new Dialog<>();
             dialog.setTitle("Profil Pengguna");
 
             Label nameLabel = new Label("Nama panggilan:");
-            TextField nameField = new TextField(currentUser.getNama()); // <-- sesuaikan properti
+            TextField nameField = new TextField(currentUser.getNama());
 
             VBox content = new VBox(10, nameLabel, nameField);
             content.setPadding(new Insets(10));
@@ -124,7 +125,7 @@ public class ProdukUserView {
         });
 
 
-        HBox iconContainer = new HBox(10, cartIcon, userIcon);
+        HBox iconContainer = new HBox(10, cartPane, userIcon);
         iconContainer.setAlignment(Pos.CENTER_RIGHT);
 
         BorderPane topBar = new BorderPane();
@@ -147,6 +148,9 @@ public class ProdukUserView {
 
         TableColumn<Product, String> hargaCol = new TableColumn<>("Harga");
         hargaCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getHargaFormatted()));
+
+        TableColumn<Product, String> tipeCol = new TableColumn<>("Tipe");
+        tipeCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTipe()));
 
         TableColumn<Product, Void> aksiCol = new TableColumn<>("");
         aksiCol.setPrefWidth(100);
@@ -178,12 +182,12 @@ public class ProdukUserView {
             }
         });
 
-        table.getColumns().addAll(kodeCol, namaCol, hargaCol, aksiCol);
+        table.getColumns().addAll(kodeCol, namaCol, hargaCol, tipeCol, aksiCol);
 
         // ===== Ambil data dari database via DataProduk.java =====
         ObservableList<Product> masterData = FXCollections.observableArrayList();
         try {
-            Connection conn = DriverManager.getConnection("jdbc:postgresql://aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres", "postgres.jnmxqxmrgwmmupkozavo", "kelompok9"); // sesuaikan
+            Connection conn = DriverManager.getConnection("jdbc:postgresql://aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres", "postgres.jnmxqxmrgwmmupkozavo", "kelompok9");
             DataProduk.loadProdukFromDatabase(conn);
             List<Product> produkList = DataProduk.getProdukList();
             masterData.addAll(produkList);
@@ -202,7 +206,8 @@ public class ProdukUserView {
                     return true;
                 }
                 String lowerCaseFilter = newValue.toLowerCase();
-                return product.getKode().toLowerCase().contains(lowerCaseFilter);
+                return product.getKode().toLowerCase().contains(lowerCaseFilter) ||
+                        product.getNama().toLowerCase().contains(lowerCaseFilter);
             });
         });
 
@@ -313,5 +318,4 @@ public class ProdukUserView {
         alert.showAndWait();
         return alert.getResult() == ButtonType.YES;
     }
-
 }

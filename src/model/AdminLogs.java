@@ -19,5 +19,4 @@ public class AdminLogs {
             e.printStackTrace();
         }
     }
-
 }

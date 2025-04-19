@@ -62,7 +62,7 @@ public class PurchaseTransaction extends Transaction implements Payable {
                 stmt.executeUpdate();
             }
 
-            // Simpan detail transaksi (asumsi ada tabel transaction_items)
+            // Simpan detail transaksi (tabel transaction_items)
             String detailSql = "INSERT INTO transaction_items (transaction_id, product_code, product_name, quantity, price) " +
                     "VALUES (?, ?, ?, ?, ?)";
 

@@ -1,15 +1,10 @@
 package dao;
 import database.db_connect;
 import model.User;
-import model.AuthLog;
-import model.Auth;
-
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
 
 public class UserDao {
-    // Method to authenticate a user
+
     public User authenticate(String username, String plainPassword) throws SQLException {
         String sql = "SELECT * FROM userk9 WHERE username = ?";
 
@@ -22,7 +17,7 @@ public class UserDao {
                 if (rs.next()) {
                     String hashedPassword = rs.getString("password");
 
-                    // Verify password using BCrypt
+                    // hash bccrypt
                     if (model.Auth.checkPassword(plainPassword, hashedPassword)) {
                         User user = new User();
                         user.setId(rs.getInt("id"));
@@ -31,14 +26,14 @@ public class UserDao {
                         user.setRole(rs.getString("role"));
 
                         // Log successful login
-                        logAuthentication(user.getId(), username, "SUCCESS");
+                        logAuthentication(user.getId(), username, "SUCCESS", "Berhasil Login");
 
                         return user;
                     }
                 }
 
                 // Log failed login attempt
-                logAuthentication(0, username, "FAILED");
+                logAuthentication(0, username, "FAILED", "Gagal Login");
                 return null;
             }
         }
@@ -87,8 +82,8 @@ public class UserDao {
     }
 
     // Method to log authentication attempts
-    public void logAuthentication(int userId, String username, String status) throws SQLException {
-        String sql = "INSERT INTO auth_logs (user_id, username, status, timestamp) VALUES (?, ?, ?, ?)";
+    public void logAuthentication(int userId, String username, String status, String activity) throws SQLException {
+        String sql = "INSERT INTO logs_activity (user_id, username, status, timestamp, activity) VALUES (?, ?, ?, ?, ?)";
 
         try (Connection conn = db_connect.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -97,6 +92,7 @@ public class UserDao {
             stmt.setString(2, username);
             stmt.setString(3, status);
             stmt.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
+            stmt.setString(5, activity);
 
             stmt.executeUpdate();
         }

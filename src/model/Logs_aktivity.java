@@ -2,22 +2,24 @@ package model;
 
 import java.sql.Timestamp;
 
-public class AuthLog {
+public class Logs_aktivity {
     private int id;
     private int userId;
     private String username;
     private String status;
     private Timestamp timestamp;
+    private String activity;
 
-    public AuthLog() {
+    public Logs_aktivity() {
     }
 
-    public AuthLog(int id, int userId, String username, String status, Timestamp timestamp) {
+    public Logs_aktivity(int id, int userId, String username, String status, Timestamp timestamp) {
         this.id = id;
         this.userId = userId;
         this.username = username;
         this.status = status;
         this.timestamp = timestamp;
+        this.activity = activity;
     }
 
     // Getters and Setters
@@ -59,5 +61,13 @@ public class AuthLog {
 
     public void setTimestamp(Timestamp timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public String getActivity() {
+        return activity;
+    }
+
+    public void setActivity(String activity) {
+        this.activity = activity;
     }
 }

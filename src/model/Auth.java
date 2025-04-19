@@ -1,4 +1,5 @@
 package model;
+
 import org.mindrot.jbcrypt.BCrypt;
 
 public class Auth {

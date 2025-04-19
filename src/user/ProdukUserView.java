@@ -12,13 +12,12 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-import model.Product;
-import model.DataProduk;
-import model.User;
+import model.*;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.List;
+import java.util.Optional;
 
 public class ProdukUserView {
 
@@ -50,15 +49,34 @@ public class ProdukUserView {
         ImageView cartIcon = new ImageView(cartImage);
         cartIcon.setFitHeight(30);
         cartIcon.setPreserveRatio(true);
-        cartIcon.setOnMouseClicked(event -> {
+        Label cartCountLabel = new Label("0");
+        cartCountLabel.setStyle("-fx-background-color: green; -fx-text-fill: white; -fx-padding: 2px 6px; -fx-background-radius: 10;");
+        StackPane cartPane = new StackPane();
+        cartPane.getChildren().add(cartIcon);
+        StackPane.setAlignment(cartCountLabel, Pos.TOP_RIGHT);
+        cartPane.getChildren().add(cartCountLabel);
+
+        cartPane.setOnMouseClicked(event -> {
             try {
-                KeranjangUser keranjang = new KeranjangUser();
+                KeranjangUser keranjang = new KeranjangUser(currentUser);
                 Stage keranjangStage = new Stage();
                 keranjang.start(keranjangStage);
+                // Update cart count when returning from cart screen
+                keranjangStage.setOnHidden(e -> {
+                    updateCartCountLabel(cartCountLabel);
+                });
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
         });
+
+        // Initial update of cart count
+        updateCartCountLabel(cartCountLabel);
+
+        Image userImage = new Image(getClass().getResourceAsStream("/img/user.png"));
+        ImageView userIcon = new ImageView(userImage);
+        userIcon.setFitHeight(30);
+        userIcon.setPreserveRatio(true);
 
         Image userImage = new Image(getClass().getResourceAsStream("/img/user.png"));
         ImageView userIcon = new ImageView(userImage);
@@ -153,8 +171,7 @@ public class ProdukUserView {
                 } else {
                     Product p = getTableView().getItems().get(getIndex());
                     addBtn.setOnAction(e -> {
-                        System.out.println("Tambah ke keranjang: " + p.getNama());
-                        // TODO: tambahkan logika simpan ke keranjang
+                        showAddToCartDialog(p, cartCountLabel);
                     });
                     setGraphic(addBtn);
                 }
@@ -205,6 +222,60 @@ public class ProdukUserView {
         stage.setTitle("Tampilan User");
         stage.setScene(scene);
         stage.show();
+    }
+
+    private void showAddToCartDialog(Product product, Label cartCountLabel) {
+        Dialog<Integer> dialog = new Dialog<>();
+        dialog.setTitle("Tambah ke Keranjang");
+        dialog.setHeaderText("Tambahkan " + product.getNama() + " ke keranjang");
+
+        ButtonType addButtonType = new ButtonType("Tambah", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(addButtonType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+
+        Spinner<Integer> quantitySpinner = new Spinner<>();
+        SpinnerValueFactory<Integer> valueFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 100, 1);
+        quantitySpinner.setValueFactory(valueFactory);
+        quantitySpinner.setEditable(true);
+
+        grid.add(new Label("Jumlah:"), 0, 0);
+        grid.add(quantitySpinner, 1, 0);
+
+        dialog.getDialogPane().setContent(grid);
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == addButtonType) {
+                return quantitySpinner.getValue();
+            }
+            return null;
+        });
+
+        Optional<Integer> result = dialog.showAndWait();
+
+        result.ifPresent(quantity -> {
+            // Add to cart
+            cart.addItem(product, quantity);
+
+            // Update cart count label
+            updateCartCountLabel(cartCountLabel);
+
+            // Show confirmation
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Berhasil");
+            alert.setHeaderText(null);
+            alert.setContentText(quantity + " " + product.getNama() + " telah ditambahkan ke keranjang!");
+            alert.showAndWait();
+        });
+    }
+
+    private void updateCartCountLabel(Label cartCountLabel) {
+        int itemCount = cart.getItemCount();
+        cartCountLabel.setText(String.valueOf(itemCount));
+        cartCountLabel.setVisible(itemCount > 0);
     }
 
     private void updateNamaInDatabase(int userId, String newNama) {

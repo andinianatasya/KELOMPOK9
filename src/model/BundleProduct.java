@@ -1,41 +1,44 @@
 package model;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class BundleProduct extends Product {
     private List<Product> isiBundle;
 
     public BundleProduct(String kode, String nama, List<Product> isiBundle) {
-        super(kode, nama, 0); // harga akan dihitung dari isi bundle
+        super(kode, nama, 0); // Harga awal diset 0, akan dihitung ulang
         this.isiBundle = isiBundle;
-        updateHarga();
+        calculatePrice();
+    }
+
+    private void calculatePrice() {
+        double totalHarga = 0;
+        for (Product p : isiBundle) {
+            totalHarga += p.getHarga();
+        }
+        // Berikan diskon 10% untuk bundle
+        this.setHarga(totalHarga * 0.9);
+    }
+
+    public List<Product> getIsiBundle() {
+        return isiBundle;
     }
 
     public void setIsiBundle(List<Product> isiBundle) {
         this.isiBundle = isiBundle;
-        updateHarga(); // Update harga saat isi diganti
+        calculatePrice();
     }
 
-    private void updateHarga() {
-        double total = 0;
-        for (Product p : isiBundle) {
-            total += p.getHarga();
-        }
-        this.harga = total * 0.9; //diskon 10%
-    }
-
-    @Override
     public String getTipe() {
         return "Bundle";
     }
 
     @Override
     public String getDetail() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Isi bundle:\n");
-        for (Product p : isiBundle) {
-            sb.append("- ").append(p.getNama()).append(" (").append(p.getHargaFormatted()).append(")\n");
-        }
-        return sb.toString();
+        String isiList = isiBundle.stream()
+                .map(p -> p.getNama())
+                .collect(Collectors.joining(", "));
+        return "Bundle berisi: " + isiList;
     }
 }

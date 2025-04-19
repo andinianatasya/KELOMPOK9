@@ -5,11 +5,6 @@ import java.time.LocalDate;
 import java.util.*;
 import java.net.URL;
 
-import model.BundleProduct;
-import model.DigitalProduct;
-import model.NonPerishableProduct;
-import model.PerishableProduct;
-
 public class DataProduk {
     private static final List<Product> produkList = new ArrayList<>();
 
@@ -64,7 +59,6 @@ public class DataProduk {
                         break;
 
                     case "Bundle":
-                        // dummy object, isi nanti
                         p = new BundleProduct(kode, nama, new ArrayList<>());
                         break;
                 }

@@ -11,6 +11,7 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import model.*;
 
@@ -24,6 +25,7 @@ public class ProdukUserView {
     private User currentUser;
     private Stage stage;
     private ShoppingCart cart;
+    private Connection conn;
 
     public ProdukUserView(User user, Stage stage) {
         this.currentUser = user;
@@ -31,6 +33,16 @@ public class ProdukUserView {
         this.cart = ShoppingCart.getInstance();
         this.cart.setCurrentUser(user);
         initialize();
+    }
+
+    private Connection getConnection() throws Exception {
+        if (conn == null || conn.isClosed()) {
+            conn = DriverManager.getConnection(
+                    "jdbc:postgresql://aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres",
+                    "postgres.jnmxqxmrgwmmupkozavo",
+                    "kelompok9");
+        }
+        return conn;
     }
 
     private void initialize() {
@@ -52,6 +64,19 @@ public class ProdukUserView {
         ImageView cartIcon = new ImageView(cartImage);
         cartIcon.setFitHeight(30);
         cartIcon.setPreserveRatio(true);
+
+        Image aktivitasImage = new Image(getClass().getResourceAsStream("/img/aktivitas.png"));
+        ImageView aktivitasIcon = new ImageView(aktivitasImage);
+        aktivitasIcon.setFitHeight(30);
+        aktivitasIcon.setPreserveRatio(true);
+        aktivitasIcon.setOnMouseClicked(e -> {
+            try {
+                showUserActivityPopup(currentUser);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        });
+
 
         // Update to show cart item count
         Label cartCountLabel = new Label("0");
@@ -125,7 +150,7 @@ public class ProdukUserView {
         });
 
 
-        HBox iconContainer = new HBox(10, cartPane, userIcon);
+        HBox iconContainer = new HBox(10, cartPane, aktivitasIcon, userIcon);
         iconContainer.setAlignment(Pos.CENTER_RIGHT);
 
         BorderPane topBar = new BorderPane();
@@ -317,5 +342,45 @@ public class ProdukUserView {
         alert.setTitle("Konfirmasi");
         alert.showAndWait();
         return alert.getResult() == ButtonType.YES;
+    }
+
+
+    private void showUserActivityPopup(User user) {
+        Stage popupStage = new Stage();
+        popupStage.setTitle("Aktivitas " + user.getUsername());
+
+        TableView<Logs_aktivity> table = new TableView<>();
+
+        TableColumn<Logs_aktivity, String> statusCol = new TableColumn<>("Status");
+        statusCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getStatus()));
+
+        TableColumn<Logs_aktivity, String> activityCol = new TableColumn<>("Aktivitas");
+        activityCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getActivity()));
+
+        TableColumn<Logs_aktivity, String> timestampCol = new TableColumn<>("Waktu");
+        timestampCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTimestamp().toString()));
+
+        table.getColumns().addAll(statusCol, activityCol, timestampCol);
+
+        try {
+            Connection conn = getConnection(); // method milik class ini sendiri
+            List<Logs_aktivity> logs = ShowLogs.getUserLogs(conn, user.getId());
+            table.setItems(FXCollections.observableArrayList(logs));
+        } catch (Exception e) {
+            e.printStackTrace();
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Error");
+            alert.setHeaderText("Gagal Memuat Aktivitas");
+            alert.setContentText("Terjadi kesalahan saat mengambil data log aktivitas.");
+            alert.showAndWait();
+        }
+
+        VBox layout = new VBox(10, table);
+        layout.setPadding(new Insets(10));
+
+        Scene scene = new Scene(layout, 600, 400);
+        popupStage.setScene(scene);
+        popupStage.initModality(Modality.APPLICATION_MODAL);
+        popupStage.show();
     }
 }

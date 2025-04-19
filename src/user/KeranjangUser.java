@@ -15,7 +15,6 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import model.*;
 
-
 import java.util.Optional;
 
 public class KeranjangUser {
@@ -120,16 +119,10 @@ public class KeranjangUser {
                     alert.showAndWait().ifPresent(response -> {
                         if (response == ButtonType.YES) {
                             cart.removeItem(item.getProduct().getKode());
-                            updateTableView();
+                            refreshTableData();
                         }
                     });
                 });
-            }
-
-            private void updateTableView() {
-                ObservableList<CartItem> items = FXCollections.observableArrayList(cart.getItems());
-                tableView.setItems(items);
-                totalLabel.setText("Total: " + cart.getTotalFormatted());
             }
 
             @Override
@@ -159,7 +152,7 @@ public class KeranjangUser {
         root.getChildren().addAll(topBar, tableView, totalSection);
 
         // Load data into table
-        updateTableView();
+        refreshTableData();
 
         Scene scene = new Scene(root, 950, 500);
         primaryStage.setTitle("Keranjang Belanja");
@@ -167,10 +160,25 @@ public class KeranjangUser {
         primaryStage.show();
     }
 
-    private void updateTableView() {
-        ObservableList<CartItem> items = FXCollections.observableArrayList(cart.getItems());
-        tableView.setItems(items);
-        totalLabel.setText("Total: " + cart.getTotalFormatted());
+    private void refreshTableData() {
+        try {
+            // Create new observable list from cart items
+            ObservableList<CartItem> items = FXCollections.observableArrayList();
+            items.addAll(cart.getItems());
+
+            // Set items to table
+            tableView.getItems().clear();
+            tableView.getItems().addAll(items);
+
+            // Update total label
+            totalLabel.setText("Total: " + cart.getTotalFormatted());
+
+            // Force refresh table
+            tableView.refresh();
+        } catch (Exception e) {
+            System.err.println("Error updating table view: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     private void showEditQuantityDialog(CartItem item) {
@@ -207,8 +215,21 @@ public class KeranjangUser {
         Optional<Integer> result = dialog.showAndWait();
 
         result.ifPresent(quantity -> {
-            cart.updateItemQuantity(item.getProduct().getKode(), quantity);
-            updateTableView();
+            try {
+                // Update quantity in the cart
+                cart.updateItemQuantity(item.getProduct().getKode(), quantity);
+
+                // Refresh table
+                refreshTableData();
+            } catch (Exception e) {
+                System.err.println("Error updating quantity: " + e.getMessage());
+                e.printStackTrace();
+
+                // Show error message to user
+                Alert alert = new Alert(Alert.AlertType.ERROR,
+                        "Gagal mengupdate jumlah barang: " + e.getMessage());
+                alert.showAndWait();
+            }
         });
     }
 

@@ -33,11 +33,11 @@ public class ShoppingCart {
         String productCode = product.getKode();
 
         if (items.containsKey(productCode)) {
-            // If product already in cart, update quantity
+            // jika produk sdh ada dikeranjang, update jumlah
             CartItem existingItem = items.get(productCode);
             existingItem.setQuantity(existingItem.getQuantity() + quantity);
         } else {
-            // If product not in cart, add it
+            // jika blm, tambahkan
             items.put(productCode, new CartItem(product, quantity));
         }
 
@@ -134,12 +134,13 @@ public class ShoppingCart {
 
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setInt(1, currentUser.getId());
-                stmt.setString(2, currentUser.getNama());
+                stmt.setString(2, currentUser.getUsername());
                 stmt.setString(3, activityDescription);
                 stmt.executeUpdate();
             }
         } catch (SQLException e) {
             e.printStackTrace();
+            System.err.println("Failed to log cart activity: " + e.getMessage());
         }
     }
 }

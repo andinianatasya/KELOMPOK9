@@ -15,7 +15,7 @@ public class AdminLogs {
 
             ps.executeUpdate();
         } catch (Exception e) {
-            System.err.println("Gagal mencatat aktivitas admin:");
+            System.err.println("Gagal mencatat aktivitas:");
             e.printStackTrace();
         }
     }

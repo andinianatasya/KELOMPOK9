@@ -65,19 +65,6 @@ public class ProdukUserView {
         cartIcon.setFitHeight(30);
         cartIcon.setPreserveRatio(true);
 
-        Image aktivitasImage = new Image(getClass().getResourceAsStream("/img/aktivitas.png"));
-        ImageView aktivitasIcon = new ImageView(aktivitasImage);
-        aktivitasIcon.setFitHeight(30);
-        aktivitasIcon.setPreserveRatio(true);
-        aktivitasIcon.setOnMouseClicked(e -> {
-            try {
-                showUserActivityPopup(currentUser);
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-        });
-
-
         // Update to show cart item count
         Label cartCountLabel = new Label("0");
         cartCountLabel.setStyle("-fx-background-color: red; -fx-text-fill: white; -fx-padding: 2px 6px; -fx-background-radius: 10;");
@@ -103,6 +90,19 @@ public class ProdukUserView {
 
         // Initial update of cart count
         updateCartCountLabel(cartCountLabel);
+
+        Image aktivitasImage = new Image(getClass().getResourceAsStream("/img/aktivitas.png"));
+        ImageView aktivitasIcon = new ImageView(aktivitasImage);
+        aktivitasIcon.setFitHeight(30);
+        aktivitasIcon.setPreserveRatio(true);
+        aktivitasIcon.setOnMouseClicked(e -> {
+            try {
+                showUserActivityPopup(currentUser);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        });
+
 
         Image userImage = new Image(getClass().getResourceAsStream("/img/user.png"));
         ImageView userIcon = new ImageView(userImage);

@@ -6,6 +6,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.sql.ResultSet;
 
 public class PurchaseTransaction extends Transaction implements Payable {
     private List<CartItem> items;
@@ -62,11 +63,47 @@ public class PurchaseTransaction extends Transaction implements Payable {
         transactionComplete = true;
     }
 
+    private String getUsernameByUserId(int userId) {
+        Connection conn = null;
+        String username = null;
+        try {
+            conn = getConnection();
+            String query = "SELECT username FROM userk9 WHERE id = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setInt(1, userId);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        username = rs.getString("username");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching username: " + e.getMessage());
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.close();
+                } catch (SQLException e) {
+                    System.err.println("Failed to close connection: " + e.getMessage());
+                }
+            }
+        }
+        return username;
+    }
+
+
     @Override
     public boolean serializeTransaction() {
         Connection conn = null;
         try {
             conn = getConnection();
+
+            if (this.username == null) {
+                this.username = getUsernameByUserId(this.userId);
+                if (this.username == null) {
+                    throw new SQLException("Username tidak ditemukan untuk userId " + this.userId);
+                }
+            }
 
             // Mulai transaksi database
             conn.setAutoCommit(false);

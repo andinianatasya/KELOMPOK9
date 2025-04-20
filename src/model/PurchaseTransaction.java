@@ -230,4 +230,3 @@ public class PurchaseTransaction extends Transaction implements Payable {
         return String.format("Rp%,.2f", change).replace('.', ',');
     }
 }
-

@@ -19,6 +19,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.List;
 import java.util.Optional;
+import javafx.scene.Cursor;
+
 
 public class ProdukUserView {
 
@@ -64,6 +66,9 @@ public class ProdukUserView {
         ImageView cartIcon = new ImageView(cartImage);
         cartIcon.setFitHeight(30);
         cartIcon.setPreserveRatio(true);
+        Tooltip cartTooltip = new Tooltip("Keranjang");
+        Tooltip.install(cartIcon,cartTooltip);
+        cartIcon.setCursor(Cursor.HAND);
 
         // Update to show cart item count
         Label cartCountLabel = new Label("0");
@@ -95,6 +100,9 @@ public class ProdukUserView {
         ImageView aktivitasIcon = new ImageView(aktivitasImage);
         aktivitasIcon.setFitHeight(30);
         aktivitasIcon.setPreserveRatio(true);
+        Tooltip aktivitasTooltip = new Tooltip("History");
+        Tooltip.install(aktivitasIcon,aktivitasTooltip);
+        aktivitasIcon.setCursor(Cursor.HAND);
         aktivitasIcon.setOnMouseClicked(e -> {
             try {
                 showUserActivityPopup(currentUser);
@@ -108,6 +116,9 @@ public class ProdukUserView {
         ImageView userIcon = new ImageView(userImage);
         userIcon.setFitHeight(30);
         userIcon.setPreserveRatio(true);
+        Tooltip userTooltip = new Tooltip("Akun saya");
+        Tooltip.install(userIcon,userTooltip);
+        userIcon.setCursor(Cursor.HAND);
 
         userIcon.setOnMouseClicked(event -> {
             Dialog<String> dialog = new Dialog<>();
@@ -179,6 +190,19 @@ public class ProdukUserView {
 
         TableColumn<Product, Void> aksiCol = new TableColumn<>("");
         aksiCol.setPrefWidth(100);
+        // Event handler saat baris tabel diklik
+        table.setRowFactory(tv -> {
+            TableRow<Product> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (!row.isEmpty() && event.getClickCount() == 1) {
+                    Product clickedProduct = row.getItem();
+                    // Tampilkan pop-up untuk semua jenis produk
+                    showProductDetailPopup(clickedProduct);
+                }
+            });
+            return row;
+        });
+
         aksiCol.setCellFactory(col -> new TableCell<>() {
             private final Button addBtn = new Button();
 
@@ -382,5 +406,66 @@ public class ProdukUserView {
         popupStage.setScene(scene);
         popupStage.initModality(Modality.APPLICATION_MODAL);
         popupStage.show();
+    }
+    private void showProductDetailPopup(Product product) {
+        Stage popupStage = new Stage();
+        popupStage.initModality(Modality.APPLICATION_MODAL);
+        popupStage.setTitle("Detail Produk");
+
+        VBox layout = new VBox(10);
+        layout.setAlignment(Pos.CENTER);
+        layout.setPadding(new Insets(20));
+
+        Label titleLabel = new Label(product.getNama());
+        titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+
+        // Layout utama untuk detail produk
+        VBox detailLayout = new VBox(5);
+        detailLayout.setAlignment(Pos.CENTER_LEFT);
+
+        if (product instanceof PerishableProduct) {
+            // Tampilkan informasi Perishable
+            PerishableProduct perishable = (PerishableProduct)product;
+            Label detailLabel = new Label(perishable.getDetail());
+            detailLayout.getChildren().add(detailLabel);
+
+        } else if (product instanceof DigitalProduct) {
+            // Tampilkan informasi Digital
+            DigitalProduct digital = (DigitalProduct)product;
+            Label vendorLabel = new Label("Vendor: " + digital.getvendor());
+            Label urlLabel = new Label("URL: " + digital.getURL().toString());
+            detailLayout.getChildren().addAll(vendorLabel, urlLabel);
+
+        } else if (product instanceof BundleProduct) {
+            // Tampilkan informasi Bundle
+            BundleProduct bundle = (BundleProduct)product;
+            Label bundleLabel = new Label("Bundle berisi:");
+
+            // Tabel untuk menampilkan isi bundle
+            TableView<Product> bundleTable = new TableView<>();
+            bundleTable.setPrefHeight(150);
+
+            TableColumn<Product, String> namaCol = new TableColumn<>("Nama");
+            namaCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getNama()));
+            namaCol.setPrefWidth(150);
+
+            TableColumn<Product, String> hargaCol = new TableColumn<>("Harga");
+            hargaCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getHargaFormatted()));
+            hargaCol.setPrefWidth(100);
+
+            bundleTable.getColumns().addAll(namaCol, hargaCol);
+            bundleTable.setItems(FXCollections.observableArrayList(bundle.getIsiBundle()));
+
+            detailLayout.getChildren().addAll(bundleLabel, bundleTable);
+        }
+
+        Button closeButton = new Button("Tutup");
+        closeButton.setOnAction(e -> popupStage.close());
+
+        layout.getChildren().addAll(titleLabel, detailLayout, closeButton);
+
+        Scene scene = new Scene(layout, 300, product instanceof BundleProduct ? 300 : 150);
+        popupStage.setScene(scene);
+        popupStage.showAndWait();
     }
 }

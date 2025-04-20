@@ -21,6 +21,7 @@ import java.time.LocalDate;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import javafx.scene.Cursor;
 
 public class ProdukAdminView {
     private User currentUser;
@@ -75,6 +76,9 @@ public class ProdukAdminView {
         ImageView aktivitasIcon = new ImageView(aktivitasImage);
         aktivitasIcon.setFitHeight(30);
         aktivitasIcon.setPreserveRatio(true);
+        Tooltip aktivitasTooltip = new Tooltip("History");
+        Tooltip.install(aktivitasIcon,aktivitasTooltip);
+        aktivitasIcon.setCursor(Cursor.HAND);
         aktivitasIcon.setOnMouseClicked(e -> {
             try {
                 showUserActivityPopup(currentUser);

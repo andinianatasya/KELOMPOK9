@@ -3,11 +3,11 @@ package model;
 import java.time.LocalDate;
 
 public class PerishableProduct extends Product {
-    private LocalDate expiryDate;
+    private LocalDate tanggal_kadaluarsa;
 
-    public PerishableProduct(String kode, String nama, double harga, LocalDate expiryDate) {
+    public PerishableProduct(String kode, String nama, double harga, LocalDate tanggal_kadaluarsa) {
         super(kode, nama, harga);
-        this.expiryDate = expiryDate;
+        this.tanggal_kadaluarsa = tanggal_kadaluarsa;
     }
 
     @Override
@@ -17,6 +17,6 @@ public class PerishableProduct extends Product {
 
     @Override
     public String getDetail() {
-        return "Kadaluarsa: " + expiryDate.toString();
+        return "Kadaluarsa: " + tanggal_kadaluarsa.toString();
     }
 }

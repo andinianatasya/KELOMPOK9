@@ -1,6 +1,5 @@
 package user;
 
-import javafx.application.Application;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -254,21 +253,86 @@ public class KeranjangUser {
 
             if (transaction != null) {
                 // Show success message
-                Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
-                successAlert.setTitle("Checkout Berhasil");
-                successAlert.setHeaderText("Transaksi Berhasil");
-                successAlert.setContentText("ID Transaksi: " + transaction.getTransactionId() +
-                        "\nTotal: " + String.format("Rp%,.2f", transaction.calculateTotal()).replace('.', ',') +
-                        "\n\nTerima kasih telah berbelanja!");
-                successAlert.showAndWait();
-
-                // Close cart window
-                stage.close();
+                showPaymentDialog(transaction, stage);
             } else {
                 // Show error
                 Alert errorAlert = new Alert(Alert.AlertType.ERROR, "Gagal memproses transaksi!");
                 errorAlert.showAndWait();
             }
         }
+    }
+
+    private void showPaymentDialog(PurchaseTransaction transaction, Stage parentStage) {
+        // Create payment dialog
+        Dialog<Double> paymentDialog = new Dialog<>();
+        paymentDialog.setTitle("Pembayaran");
+        paymentDialog.setHeaderText("Masukkan Jumlah Pembayaran");
+
+        // Set button types
+        ButtonType payButtonType = new ButtonType("Bayar", ButtonBar.ButtonData.OK_DONE);
+        paymentDialog.getDialogPane().getButtonTypes().addAll(payButtonType, ButtonType.CANCEL);
+
+        // Create payment form
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+
+        // Total label
+        double total = transaction.calculateTotal();
+        Label totalBelanja = new Label("Total Belanja: " + String.format("Rp%,.2f", total).replace('.', ','));
+        totalBelanja.setStyle("-fx-font-weight: bold;");
+
+        // Payment field
+        TextField paymentField = new TextField();
+        paymentField.setPromptText("Masukkan jumlah pembayaran");
+
+        grid.add(totalBelanja, 0, 0, 2, 1);
+        grid.add(new Label("Jumlah Pembayaran:"), 0, 1);
+        grid.add(paymentField, 1, 1);
+
+        paymentDialog.getDialogPane().setContent(grid);
+
+        // Set result converter
+        paymentDialog.setResultConverter(dialogButton -> {
+            if (dialogButton == payButtonType) {
+                try {
+                    return Double.parseDouble(paymentField.getText());
+                } catch (NumberFormatException e) {
+                    Alert alert = new Alert(Alert.AlertType.ERROR, "Masukkan jumlah pembayaran yang valid.");
+                    alert.showAndWait();
+                }
+            }
+            return null;
+        });
+
+        Optional<Double> result = paymentDialog.showAndWait();
+
+        result.ifPresent(amountPaid -> {
+            if (amountPaid < total) {
+                Alert alert = new Alert(Alert.AlertType.ERROR, "Jumlah pembayaran kurang dari total belanja.");
+                alert.showAndWait();
+            } else {
+                // Set payment details
+                transaction.setAmountPaid(amountPaid);
+                transaction.setChange(amountPaid - total);
+
+                // Show success dialog
+                Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                successAlert.setTitle("Pembayaran Berhasil");
+                successAlert.setHeaderText("Terima kasih atas pembelian Anda!");
+                successAlert.setContentText("Total: " + String.format("Rp%,.2f", total).replace('.', ',') +
+                        "\nDibayar: " + String.format("Rp%,.2f", amountPaid).replace('.', ',') +
+                        "\nKembalian: " + String.format("Rp%,.2f", transaction.getChange()).replace('.', ','));
+                successAlert.showAndWait();
+
+                // Clear cart and refresh view
+                cart.clear();
+                refreshTableData();
+
+                // Close the stage if needed
+                parentStage.close();
+            }
+        });
     }
 }

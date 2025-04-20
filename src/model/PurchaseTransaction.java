@@ -98,6 +98,7 @@ public class PurchaseTransaction extends Transaction implements Payable {
         try {
             conn = getConnection();
 
+            // Pastikan username tidak null
             if (this.username == null) {
                 this.username = getUsernameByUserId(this.userId);
                 if (this.username == null) {
@@ -202,12 +203,20 @@ public class PurchaseTransaction extends Transaction implements Payable {
     }
 
     private void logActivityWithConnection(Connection conn, String activityDescription) throws SQLException {
+
+        if (this.username == null) {
+            this.username = getUsernameByUserId(this.userId);
+            if (this.username == null) {
+                throw new SQLException("Username tidak ditemukan untuk userId " + this.userId + " saat mencatat log");
+            }
+        }
+
         String sql = "INSERT INTO logs_activity (user_id, username, status, timestamp, activity) " +
                 "VALUES (?, ?, 'PURCHASE', CURRENT_TIMESTAMP, ?)";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, userId);
-            stmt.setString(2, username != null ? username : "unknown");
+            stmt.setString(2, username);
             stmt.setString(3, activityDescription);
             int rows = stmt.executeUpdate();
             System.out.println("Log aktivitas disimpan: " + rows + " baris");

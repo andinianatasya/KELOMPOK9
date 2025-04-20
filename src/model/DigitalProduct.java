@@ -2,6 +2,7 @@ package model;
 
 import java.net.URL;
 
+
 public class DigitalProduct extends Product {
     private URL url;
     private String vendor;
@@ -21,4 +22,7 @@ public class DigitalProduct extends Product {
     public String getDetail() {
         return "Vendor: " + vendor + ", URL: " + url.toString();
     }
+
+    public String getvendor(){ return vendor;}
+    public String getURL(){return url.toString();}
 }

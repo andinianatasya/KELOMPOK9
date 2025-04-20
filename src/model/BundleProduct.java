@@ -41,4 +41,5 @@ public class BundleProduct extends Product {
                 .collect(Collectors.joining(", "));
         return "Bundle berisi: " + isiList;
     }
+
 }

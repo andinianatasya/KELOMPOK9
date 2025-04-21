@@ -155,8 +155,14 @@ public class PurchaseTransaction extends Transaction implements Payable {
             }
 
             // Log aktivitas transaksi
-            logActivityWithConnection(conn, "Melakukan checkout transaksi " + this.transactionId +
+            conn.commit();
+            System.out.println("Transaksi database berhasil dicommit");
+
+            // Logging dilakukan dengan koneksi baru (bukan conn yang sama)
+            logActivity("Melakukan checkout transaksi " + this.transactionId +
                     " dengan total " + String.format("Rp%,.2f", this.calculateTotal()).replace('.', ','));
+
+            return true;
 
             // Commit transaksi
             conn.commit();

@@ -164,11 +164,6 @@ public class PurchaseTransaction extends Transaction implements Payable {
 
             return true;
 
-            // Commit transaksi
-            conn.commit();
-            System.out.println("Transaksi database berhasil dicommit");
-            return true;
-
         } catch (SQLException e) {
             // Rollback jika terjadi error
             if (conn != null) {

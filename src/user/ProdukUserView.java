@@ -169,7 +169,7 @@ public class ProdukUserView {
                         e.printStackTrace();
                     }
 
-            } else if (result != null && !result.trim().isEmpty()) {
+                } else if (result != null && !result.trim().isEmpty()) {
                     updateNamaInDatabase(currentUser.getId(), result.trim());
                     currentUser.setNama(result.trim());
                     Alert alert = new Alert(Alert.AlertType.INFORMATION, "Nama berhasil diperbarui!");

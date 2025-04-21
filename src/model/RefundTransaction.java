@@ -58,16 +58,17 @@ public class RefundTransaction extends Transaction implements Payable {
         System.out.println("Transaksi retur dengan ID " + this.transactionId + " telah diproses");
         System.out.println("Total Pengembalian: " + String.format("Rp%,.2f", calculateTotal()).replace('.', ','));
 
-        // Tambahkan log aktivitas
-        logActivity("Melakukan transaksi retur dengan ID " + this.transactionId +
-                " untuk pembelian " + purchaseTransactionId);
-
         transactionComplete = true;
     }
 
     @Override
     public boolean serializeTransaction() {
         Connection conn = null;
+        PreparedStatement transactionStmt = null;
+        PreparedStatement itemStmt = null;
+        PreparedStatement logStmt = null;
+        PreparedStatement updateStmt = null;
+
         try {
             conn = getConnection();
 
@@ -82,48 +83,73 @@ public class RefundTransaction extends Transaction implements Payable {
                     "(transaction_id, user_id, username, transaction_date, total_amount, amount_paid, change_amount, type, reference_transaction_id, reason) " +
                     "VALUES (?, ?, ?, ?, ?, ?, ?, 'REFUND', ?, ?)";
 
-            try (PreparedStatement stmt = conn.prepareStatement(transactionSql)) {
-                stmt.setString(1, this.transactionId);
-                stmt.setInt(2, this.userId);
-                stmt.setString(3, this.username);
-                stmt.setTimestamp(4, Timestamp.valueOf(this.date));
-                stmt.setDouble(5, this.calculateTotal());
-                stmt.setDouble(6, this.amountPaid);
-                stmt.setDouble(7, this.change);
-                stmt.setString(8, this.purchaseTransactionId);
-                stmt.setString(9, this.reason);
+            transactionStmt = conn.prepareStatement(transactionSql);
+            transactionStmt.setString(1, this.transactionId);
+            transactionStmt.setInt(2, this.userId);
+            transactionStmt.setString(3, this.username);
+            transactionStmt.setTimestamp(4, Timestamp.valueOf(this.date));
+            transactionStmt.setDouble(5, this.calculateTotal());
+            transactionStmt.setDouble(6, this.amountPaid);
+            transactionStmt.setDouble(7, this.change);
+            transactionStmt.setString(8, this.purchaseTransactionId);
+            transactionStmt.setString(9, this.reason);
 
-                int transactionRows = stmt.executeUpdate();
-                System.out.println("Berhasil menyimpan transaksi retur: " + transactionRows + " baris");
-            }
+            int transactionRows = transactionStmt.executeUpdate();
+            System.out.println("Berhasil menyimpan transaksi retur: " + transactionRows + " baris");
+            transactionStmt.close();
 
             // Simpan detail transaksi (item-item)
             String itemSql = "INSERT INTO transaction_items " +
-                    "(transaction_id, product_code, product_name, quantity, price) " +
-                    "VALUES (?, ?, ?, ?, ?)";
+                    "(transaction_id, product_code, product_name, quantity, price, returned) " +
+                    "VALUES (?, ?, ?, ?, ?, FALSE)";
 
-            try (PreparedStatement itemStmt = conn.prepareStatement(itemSql)) {
-                int batchCount = 0;
+            itemStmt = conn.prepareStatement(itemSql);
+            int batchCount = 0;
 
-                for (CartItem item : items) {
-                    itemStmt.setString(1, this.transactionId);
-                    itemStmt.setString(2, item.getProduct().getKode());
-                    itemStmt.setString(3, item.getProduct().getNama());
-                    itemStmt.setInt(4, item.getQuantity());
-                    itemStmt.setDouble(5, item.getProduct().getHarga());
-                    itemStmt.addBatch();
-                    batchCount++;
-                }
-
-                if (batchCount > 0) {
-                    int[] itemResults = itemStmt.executeBatch();
-                    System.out.println("Berhasil menyimpan " + itemResults.length + " item transaksi retur");
-                }
+            for (CartItem item : items) {
+                itemStmt.setString(1, this.transactionId);
+                itemStmt.setString(2, item.getProduct().getKode());
+                itemStmt.setString(3, item.getProduct().getNama());
+                itemStmt.setInt(4, item.getQuantity());
+                itemStmt.setDouble(5, item.getProduct().getHarga());
+                itemStmt.addBatch();
+                batchCount++;
             }
 
+            if (batchCount > 0) {
+                int[] itemResults = itemStmt.executeBatch();
+                System.out.println("Berhasil menyimpan " + itemResults.length + " item transaksi retur");
+            }
+            itemStmt.close();
+
             // Log aktivitas transaksi
-            logActivityWithConnection(conn, "Melakukan transaksi retur dengan ID " + this.transactionId +
-                    " untuk pembelian " + purchaseTransactionId);
+            String logSql = "INSERT INTO logs_activity (user_id, username, status, timestamp, activity) " +
+                    "VALUES (?, ?, 'RETURN', CURRENT_TIMESTAMP, ?)";
+
+            logStmt = conn.prepareStatement(logSql);
+            logStmt.setInt(1, userId);
+            logStmt.setString(2, username);
+            logStmt.setString(3, "Melakukan transaksi retur dengan ID " + this.transactionId +
+                    " untuk pembelian " + purchaseTransactionId + " - " + reason);
+
+            int logRows = logStmt.executeUpdate();
+            System.out.println("Log aktivitas return disimpan: " + logRows + " baris");
+            logStmt.close();
+
+            // Mark items as returned in the original transaction
+            String updateSql = "UPDATE transaction_items SET returned = TRUE " +
+                    "WHERE transaction_id = ? AND product_code = ?";
+
+            updateStmt = conn.prepareStatement(updateSql);
+            for (CartItem item : items) {
+                updateStmt.setString(1, this.purchaseTransactionId);
+                updateStmt.setString(2, item.getProduct().getKode());
+                updateStmt.addBatch();
+            }
+
+            int[] updateResults = updateStmt.executeBatch();
+            System.out.println("Berhasil memperbarui " + updateResults.length + " item menjadi returned");
+            updateStmt.close();
 
             // Commit transaksi
             conn.commit();
@@ -148,6 +174,16 @@ public class RefundTransaction extends Transaction implements Payable {
             return false;
 
         } finally {
+            // Close all statements explicitly
+            try {
+                if (transactionStmt != null) transactionStmt.close();
+                if (itemStmt != null) itemStmt.close();
+                if (logStmt != null) logStmt.close();
+                if (updateStmt != null) updateStmt.close();
+            } catch (SQLException e) {
+                System.err.println("Error closing statements: " + e.getMessage());
+            }
+
             // Tutup koneksi
             if (conn != null) {
                 try {
@@ -158,27 +194,6 @@ public class RefundTransaction extends Transaction implements Payable {
                     System.err.println("Gagal menutup koneksi: " + e.getMessage());
                 }
             }
-        }
-    }
-
-    private void logActivity(String activityDescription) {
-        try (Connection conn = getConnection()) {
-            logActivityWithConnection(conn, activityDescription);
-        } catch (SQLException e) {
-            System.err.println("Gagal mencatat aktivitas: " + e.getMessage());
-        }
-    }
-
-    private void logActivityWithConnection(Connection conn, String activityDescription) throws SQLException {
-        String sql = "INSERT INTO logs_activity (user_id, username, status, timestamp, activity) " +
-                "VALUES (?, ?, 'REFUND', CURRENT_TIMESTAMP, ?)";
-
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, userId);
-            stmt.setString(2, username);
-            stmt.setString(3, activityDescription);
-            int rows = stmt.executeUpdate();
-            System.out.println("Log aktivitas retur disimpan: " + rows + " baris");
         }
     }
 

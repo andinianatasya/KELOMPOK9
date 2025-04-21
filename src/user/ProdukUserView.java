@@ -84,6 +84,7 @@ public class ProdukUserView {
                 KeranjangUser keranjang = new KeranjangUser(currentUser);
                 Stage keranjangStage = new Stage();
                 keranjang.start(keranjangStage);
+
                 // Update cart count when returning from cart screen
                 keranjangStage.setOnHidden(e -> {
                     updateCartCountLabel(cartCountLabel);

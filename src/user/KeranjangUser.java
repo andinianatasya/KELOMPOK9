@@ -137,11 +137,15 @@ public class KeranjangUser {
         totalLabel = new Label("Total: Rp0,00");
         totalLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
+        Button returnBtn = new Button("Return Barang");
+        returnBtn.setStyle("-fx-background-color: #FF9800; -fx-text-fill: white; -fx-font-size: 14px;");
+        returnBtn.setOnAction(e -> openReturnPage(primaryStage));
+
         Button checkoutBtn = new Button("Checkout");
         checkoutBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-size: 14px;");
         checkoutBtn.setOnAction(e -> handleCheckout(primaryStage));
 
-        HBox totalSection = new HBox(20, totalLabel, checkoutBtn);
+        HBox totalSection = new HBox(20, totalLabel, returnBtn, checkoutBtn);
         totalSection.setAlignment(Pos.CENTER_RIGHT);
         totalSection.setPadding(new Insets(10));
 
@@ -158,6 +162,20 @@ public class KeranjangUser {
         primaryStage.setScene(scene);
         primaryStage.show();
     }
+
+    private void openReturnPage(Stage currentStage) {
+        try {
+            ReturnBarangUser returnPage = new ReturnBarangUser(currentUser);
+            Stage returnStage = new Stage();
+            returnPage.start(returnStage);
+
+            currentStage.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     private void refreshTableData() {
         try {

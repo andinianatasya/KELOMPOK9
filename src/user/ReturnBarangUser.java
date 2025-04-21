@@ -232,7 +232,7 @@ public class ReturnBarangUser {
         } catch (SQLException e) {
             System.err.println("Error loading transaction items: " + e.getMessage());
             e.printStackTrace();
-            showError("Database Error", "Failed to load transaction items.");
+            showError("Database Erro", "Failed to load transaction items.");
         }
     }
 
@@ -304,7 +304,7 @@ public class ReturnBarangUser {
                 keranjang.start(new Stage());
                 stage.close();
             } else {
-                showError("Database Error", "Gagal menyimpan transaksi return ke database.");
+                showError("Maaf", "Coba sekali lagi.");
             }
         }
     }

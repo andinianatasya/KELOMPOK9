@@ -14,6 +14,7 @@ import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import model.*;
+import login.Login;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -133,7 +134,9 @@ public class ProdukUserView {
 
             ButtonType updateButtonType = new ButtonType("Simpan", ButtonBar.ButtonData.OK_DONE);
             ButtonType deleteButtonType = new ButtonType("Hapus Akun", ButtonBar.ButtonData.LEFT);
-            dialog.getDialogPane().getButtonTypes().addAll(updateButtonType, deleteButtonType, ButtonType.CANCEL);
+            ButtonType logoutButtonType = new ButtonType("Log Out", ButtonBar.ButtonData.OTHER);
+            dialog.getDialogPane().getButtonTypes().addAll(updateButtonType, deleteButtonType, logoutButtonType, ButtonType.CANCEL);
+
             dialog.getDialogPane().setContent(content);
 
             dialog.setResultConverter(dialogButton -> {
@@ -141,24 +144,39 @@ public class ProdukUserView {
                     return nameField.getText();
                 } else if (dialogButton == deleteButtonType) {
                     return "DELETE";
+                } else if (dialogButton == logoutButtonType) {
+                    return "LOGOUT";
                 }
                 return null;
             });
+
 
             dialog.showAndWait().ifPresent(result -> {
                 if ("DELETE".equals(result)) {
                     boolean confirmed = confirmDelete();
                     if (confirmed) {
                         deleteUserFromDatabase(currentUser.getId());
-                        stage.close(); // keluar dari aplikasi setelah hapus akun
+                        stage.close();
                     }
+                } else if ("LOGOUT".equals(result)) {
+                    stage.close();
+
+
+                    Stage loginStage = new Stage();
+                    try {
+                        new Login().start(loginStage);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
                 } else if (result != null && !result.trim().isEmpty()) {
                     updateNamaInDatabase(currentUser.getId(), result.trim());
-                    currentUser.setNama(result.trim()); // update di objek lokal
+                    currentUser.setNama(result.trim());
                     Alert alert = new Alert(Alert.AlertType.INFORMATION, "Nama berhasil diperbarui!");
                     alert.showAndWait();
                 }
             });
+
         });
 
 

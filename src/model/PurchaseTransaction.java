@@ -53,6 +53,12 @@ public class PurchaseTransaction extends Transaction implements Payable {
 
     @Override
     public void processTransaction() {
+        // Only process if payment is successful
+        if (this.amountPaid < calculateTotal()) {
+            System.out.println("Tidak dapat memproses transaksi: Pembayaran kurang dari total belanja");
+            return;
+        }
+
         System.out.println("Transaksi dengan ID " + this.transactionId + " telah diproses");
         System.out.println("Total Pembelian: " + String.format("Rp%,.2f", calculateTotal()).replace('.', ','));
         System.out.println("Pembayaran: " + String.format("Rp%,.2f", amountPaid).replace('.', ','));
@@ -91,108 +97,84 @@ public class PurchaseTransaction extends Transaction implements Payable {
         return username;
     }
 
-
     @Override
     public boolean serializeTransaction() {
-        Connection conn = null;
-        try {
-            conn = getConnection();
+        // Only serialize if transaction is complete
+        if (!transactionComplete) {
+            System.out.println("Tidak dapat menyimpan transaksi: Transaksi belum selesai");
+            return false;
+        }
 
+        boolean success = false;
+
+        try {
             // Pastikan username tidak null
             if (this.username == null) {
-                this.username = getUsernameByUserId(this.userId);
+                try (Connection conn = getConnection()) {
+                    this.username = getUsernameByUserId(this.userId);
+                }
                 if (this.username == null) {
                     throw new SQLException("Username tidak ditemukan untuk userId " + this.userId);
                 }
             }
 
-            // Mulai transaksi database
-            conn.setAutoCommit(false);
-
             // Log untuk debugging
             System.out.println("Menyimpan transaksi ke database dengan ID: " + this.transactionId);
+            System.out.println("Jumlah item dalam transaksi: " + this.items.size());
 
-            // Simpan data transaksi utama
-            String transactionSql = "INSERT INTO transactions " +
-                    "(transaction_id, user_id, username, transaction_date, total_amount, amount_paid, change_amount, type) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, 'PURCHASE')";
+            // 1. Simpan data transaksi utama menggunakan koneksi terpisah
+            try (Connection conn = getConnection()) {
+                String transactionSql = "INSERT INTO transactions " +
+                        "(transaction_id, user_id, username, transaction_date, total_amount, amount_paid, change_amount, type) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, 'PURCHASE')";
 
-            try (PreparedStatement stmt = conn.prepareStatement(transactionSql)) {
-                stmt.setString(1, this.transactionId);
-                stmt.setInt(2, this.userId);
-                stmt.setString(3, this.username);
-                stmt.setTimestamp(4, Timestamp.valueOf(this.date));
-                stmt.setDouble(5, this.calculateTotal());
-                stmt.setDouble(6, this.amountPaid);
-                stmt.setDouble(7, this.change);
+                try (PreparedStatement stmt = conn.prepareStatement(transactionSql)) {
+                    stmt.setString(1, this.transactionId);
+                    stmt.setInt(2, this.userId);
+                    stmt.setString(3, this.username);
+                    stmt.setTimestamp(4, Timestamp.valueOf(this.date));
+                    stmt.setDouble(5, this.calculateTotal());
+                    stmt.setDouble(6, this.amountPaid);
+                    stmt.setDouble(7, this.change);
 
-                int transactionRows = stmt.executeUpdate();
-                System.out.println("Berhasil menyimpan transaksi: " + transactionRows + " baris");
+                    int transactionRows = stmt.executeUpdate();
+                    System.out.println("Berhasil menyimpan transaksi: " + transactionRows + " baris");
+                }
             }
 
-            // Simpan detail transaksi (item-item)
-            String itemSql = "INSERT INTO transaction_items " +
-                    "(transaction_id, product_code, product_name, quantity, price) " +
-                    "VALUES (?, ?, ?, ?, ?)";
+            // 2. Simpan detail transaksi (item-item) menggunakan koneksi terpisah untuk setiap item
+            for (CartItem item : items) {
+                try (Connection conn = getConnection();
+                     PreparedStatement itemStmt = conn.prepareStatement(
+                             "INSERT INTO transaction_items (transaction_id, product_code, product_name, quantity, price) " +
+                                     "VALUES (?, ?, ?, ?, ?)")) {
 
-            try (PreparedStatement itemStmt = conn.prepareStatement(itemSql)) {
-                int batchCount = 0;
-
-                for (CartItem item : items) {
                     itemStmt.setString(1, this.transactionId);
                     itemStmt.setString(2, item.getProduct().getKode());
                     itemStmt.setString(3, item.getProduct().getNama());
                     itemStmt.setInt(4, item.getQuantity());
                     itemStmt.setDouble(5, item.getProduct().getHarga());
-                    itemStmt.addBatch();
-                    batchCount++;
-                }
 
-                if (batchCount > 0) {
-                    int[] itemResults = itemStmt.executeBatch();
-                    System.out.println("Berhasil menyimpan " + itemResults.length + " item transaksi");
+                    int itemResult = itemStmt.executeUpdate();
+                    System.out.println("Item " + item.getProduct().getKode() + " berhasil disimpan: " + itemResult + " baris");
                 }
             }
 
-            // Log aktivitas transaksi
-            conn.commit();
-            System.out.println("Transaksi database berhasil dicommit");
-
-            // Logging dilakukan dengan koneksi baru (bukan conn yang sama)
+            // 3. Log aktivitas dengan koneksi terpisah
             logActivity("Melakukan checkout transaksi " + this.transactionId +
                     " dengan total " + String.format("Rp%,.2f", this.calculateTotal()).replace('.', ','));
 
-            return true;
+            System.out.println("Semua data transaksi berhasil disimpan");
+            success = true;
 
         } catch (SQLException e) {
-            // Rollback jika terjadi error
-            if (conn != null) {
-                try {
-                    conn.rollback();
-                    System.err.println("Transaksi database di-rollback karena error");
-                } catch (SQLException ex) {
-                    System.err.println("Gagal melakukan rollback: " + ex.getMessage());
-                }
-            }
-
             System.err.println("Database error saat menyimpan transaksi: " + e.getMessage());
             System.err.println("SQL State: " + e.getSQLState());
             System.err.println("Error Code: " + e.getErrorCode());
             e.printStackTrace();
-            return false;
-
-        } finally {
-            // Tutup koneksi
-            if (conn != null) {
-                try {
-                    conn.setAutoCommit(true);
-                    conn.close();
-                    System.out.println("Koneksi database ditutup");
-                } catch (SQLException e) {
-                    System.err.println("Gagal menutup koneksi: " + e.getMessage());
-                }
-            }
         }
+
+        return success;
     }
 
     private void logActivity(String activityDescription) {
@@ -204,7 +186,6 @@ public class PurchaseTransaction extends Transaction implements Payable {
     }
 
     private void logActivityWithConnection(Connection conn, String activityDescription) throws SQLException {
-
         if (this.username == null) {
             this.username = getUsernameByUserId(this.userId);
             if (this.username == null) {

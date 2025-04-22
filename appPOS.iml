@@ -10,7 +10,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/../jbcrypt-0.4.jar!/" />
+          <root url="jar://$USER_HOME$/Downloads/postgresql-42.7.5.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -19,7 +19,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/../postgresql-42.7.5.jar!/" />
+          <root url="jar://$USER_HOME$/Downloads/jbcrypt-0.4.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -28,11 +28,11 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="file://$MODULE_DIR$/../javafx-sdk-24.0.1/lib" />
+          <root url="file://C:/javafx-sdk-24/lib" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
-        <jarDirectory url="file://$MODULE_DIR$/../javafx-sdk-24.0.1/lib" recursive="false" />
+        <jarDirectory url="file://C:/javafx-sdk-24/lib" recursive="false" />
       </library>
     </orderEntry>
     <orderEntry type="library" name="lib" level="project" />

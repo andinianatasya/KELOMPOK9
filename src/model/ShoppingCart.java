@@ -114,11 +114,9 @@ public class ShoppingCart {
             transaction.addItem(item);
         }
 
-        transaction.processTransaction();
-        transaction.serializeTransaction();
-
-        // Clear cart after successful checkout
-        clear();
+        // Don't process or serialize the transaction yet
+        // The payment validation will happen in the UI layer
+        // Only mark it as created but not completed
 
         return transaction;
     }

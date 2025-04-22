@@ -373,6 +373,17 @@ public class ProdukUserView {
             stmt.executeUpdate();
             Alert alert = new Alert(Alert.AlertType.INFORMATION, "Akun berhasil dihapus.");
             alert.showAndWait();
+
+            // Menutup jendela saat ini
+            stage.close();
+
+            // Membuka layar login
+            Stage loginStage = new Stage();
+            try {
+                new Login().start(loginStage);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         } catch (Exception e) {
             e.printStackTrace();
             Alert alert = new Alert(Alert.AlertType.ERROR, "Gagal menghapus akun.");

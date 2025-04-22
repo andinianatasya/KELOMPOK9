@@ -35,5 +35,8 @@
         <jarDirectory url="file://$MODULE_DIR$/../javafx-sdk-24.0.1/lib" recursive="false" />
       </library>
     </orderEntry>
+    <orderEntry type="library" name="lib" level="project" />
+    <orderEntry type="library" name="libs" level="project" />
+    <orderEntry type="library" name="postgresql-42.7.5" level="project" />
   </component>
 </module>

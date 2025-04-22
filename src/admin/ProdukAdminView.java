@@ -92,6 +92,46 @@ public class ProdukAdminView {
         userIcon.setFitHeight(30);
         userIcon.setPreserveRatio(true);
 
+        userIcon.setOnMouseClicked(event -> {
+            Dialog<String> dialog = new Dialog<>();
+            dialog.setTitle("Profil Pengguna");
+
+            Label nameLabel = new Label("Nama panggilan:");
+            TextField nameField = new TextField(currentUser.getNama());
+
+            VBox content = new VBox(10, nameLabel, nameField);
+            content.setPadding(new Insets(10));
+
+            ButtonType updateButtonType = new ButtonType("Simpan", ButtonBar.ButtonData.OK_DONE);
+            ButtonType deleteButtonType = new ButtonType("Hapus Akun", ButtonBar.ButtonData.LEFT);
+            dialog.getDialogPane().getButtonTypes().addAll(updateButtonType, deleteButtonType, ButtonType.CANCEL);
+            dialog.getDialogPane().setContent(content);
+
+            dialog.setResultConverter(dialogButton -> {
+                if (dialogButton == updateButtonType) {
+                    return nameField.getText();
+                } else if (dialogButton == deleteButtonType) {
+                    return "DELETE";
+                }
+                return null;
+            });
+
+            dialog.showAndWait().ifPresent(result -> {
+                if ("DELETE".equals(result)) {
+                    boolean confirmed = confirmDelete();
+                    if (confirmed) {
+                        deleteUserFromDatabase(currentUser.getId());
+                        stage.close(); // keluar dari aplikasi setelah hapus akun
+                    }
+                } else if (result != null && !result.trim().isEmpty()) {
+                    updateNamaInDatabase(currentUser.getId(), result.trim());
+                    currentUser.setNama(result.trim()); // update di objek lokal
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION, "Nama berhasil diperbarui!");
+                    alert.showAndWait();
+                }
+            });
+        });
+
         HBox iconContainer = new HBox(10, tambahBtn, aktivitasIcon, userIcon);
         iconContainer.setAlignment(Pos.CENTER_RIGHT);
 
@@ -528,6 +568,42 @@ public class ProdukAdminView {
         Scene dialogScene = new Scene(mainLayout, 400, 500);
         dialogStage.setScene(dialogScene);
         dialogStage.showAndWait();
+    }
+
+    private void updateNamaInDatabase(int userId, String newNama) {
+        String sql = "UPDATE userk9 SET nama = ? WHERE id = ?";
+        try (Connection conn = DriverManager.getConnection("jdbc:postgresql://aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres", "postgres.jnmxqxmrgwmmupkozavo", "kelompok9");
+             java.sql.PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, newNama);
+            stmt.setInt(2, userId);
+            stmt.executeUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
+            Alert alert = new Alert(Alert.AlertType.ERROR, "Gagal memperbarui nama.");
+            alert.show();
+        }
+    }
+
+    private void deleteUserFromDatabase(int userId) {
+        String sql = "DELETE FROM userk9 WHERE id = ?";
+        try (Connection conn = DriverManager.getConnection("jdbc:postgresql://aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres", "postgres.jnmxqxmrgwmmupkozavo", "kelompok9");
+             java.sql.PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            stmt.executeUpdate();
+            Alert alert = new Alert(Alert.AlertType.INFORMATION, "Akun berhasil dihapus.");
+            alert.showAndWait();
+        } catch (Exception e) {
+            e.printStackTrace();
+            Alert alert = new Alert(Alert.AlertType.ERROR, "Gagal menghapus akun.");
+            alert.show();
+        }
+    }
+
+    private boolean confirmDelete() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Apakah Anda yakin ingin menghapus akun?", ButtonType.YES, ButtonType.NO);
+        alert.setTitle("Konfirmasi");
+        alert.showAndWait();
+        return alert.getResult() == ButtonType.YES;
     }
 
     private void showUserActivityPopup(User user) {

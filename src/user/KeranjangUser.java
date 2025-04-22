@@ -266,11 +266,11 @@ public class KeranjangUser {
 
         Optional<ButtonType> result = confirmAlert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            // Process transaction
+            // Create transaction but don't process/serialize yet
             PurchaseTransaction transaction = cart.checkout();
 
             if (transaction != null) {
-                // Show success message
+                // Show payment dialog
                 showPaymentDialog(transaction, stage);
             } else {
                 // Show error
@@ -330,26 +330,44 @@ public class KeranjangUser {
             if (amountPaid < total) {
                 Alert alert = new Alert(Alert.AlertType.ERROR, "Jumlah pembayaran kurang dari total belanja.");
                 alert.showAndWait();
+                // Don't proceed with payment - keep items in cart
+                return;
             } else {
                 // Set payment details
                 transaction.setAmountPaid(amountPaid);
                 transaction.setChange(amountPaid - total);
 
-                // Show success dialog
-                Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
-                successAlert.setTitle("Pembayaran Berhasil");
-                successAlert.setHeaderText("Terima kasih atas pembelian Anda!");
-                successAlert.setContentText("Total: " + String.format("Rp%,.2f", total).replace('.', ',') +
-                        "\nDibayar: " + String.format("Rp%,.2f", amountPaid).replace('.', ',') +
-                        "\nKembalian: " + String.format("Rp%,.2f", transaction.getChange()).replace('.', ','));
-                successAlert.showAndWait();
+                // Process the transaction only if payment is sufficient
+                transaction.processTransaction();
 
-                // Clear cart and refresh view
-                cart.clear();
-                refreshTableData();
+                // Only serialize if transaction is complete
+                if (transaction.isTransactionComplete()) {
+                    boolean saved = transaction.serializeTransaction();
 
-                // Close the stage if needed
-                parentStage.close();
+                    if (saved) {
+                        // Show success dialog
+                        Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                        successAlert.setTitle("Pembayaran Berhasil");
+                        successAlert.setHeaderText("Terima kasih atas pembelian Anda!");
+                        successAlert.setContentText("Total: " + String.format("Rp%,.2f", total).replace('.', ',') +
+                                "\nDibayar: " + String.format("Rp%,.2f", amountPaid).replace('.', ',') +
+                                "\nKembalian: " + String.format("Rp%,.2f", transaction.getChange()).replace('.', ','));
+                        successAlert.showAndWait();
+
+                        // Clear cart only after successful transaction
+                        cart.clear();
+                        refreshTableData();
+
+                        // Close the stage if needed
+                        parentStage.close();
+                    } else {
+                        Alert errorAlert = new Alert(Alert.AlertType.ERROR, "Gagal menyimpan transaksi ke database!");
+                        errorAlert.showAndWait();
+                    }
+                } else {
+                    Alert errorAlert = new Alert(Alert.AlertType.ERROR, "Transaksi tidak berhasil diproses!");
+                    errorAlert.showAndWait();
+                }
             }
         });
     }

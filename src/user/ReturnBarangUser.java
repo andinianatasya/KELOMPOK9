@@ -157,8 +157,13 @@ public class ReturnBarangUser {
         ObservableList<String> transactions = FXCollections.observableArrayList();
 
         try (Connection conn = db_connect.getConnection()) {
-            String sql = "SELECT transaction_id, transaction_date FROM transactions " +
-                    "WHERE user_id = ? AND type = 'PURCHASE' ORDER BY transaction_date DESC";
+            // Modified query to check if there are any returnable items
+            String sql = "SELECT t.transaction_id, t.transaction_date FROM transactions t " +
+                    "WHERE t.user_id = ? AND t.type = 'PURCHASE' " +
+                    "AND EXISTS (SELECT 1 FROM transaction_items ti " +
+                    "WHERE ti.transaction_id = t.transaction_id " +
+                    "AND (ti.returned = FALSE OR ti.returned IS NULL)) " +
+                    "ORDER BY t.transaction_date DESC";
 
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setInt(1, currentUser.getId());
@@ -232,7 +237,7 @@ public class ReturnBarangUser {
         } catch (SQLException e) {
             System.err.println("Error loading transaction items: " + e.getMessage());
             e.printStackTrace();
-            showError("Database Erro", "Failed to load transaction items.");
+            showError("Database Error", "Failed to load transaction items.");
         }
     }
 
@@ -299,6 +304,20 @@ public class ReturnBarangUser {
                         "Return barang berhasil diproses.\n" +
                                 "Total pengembalian: " + refund.getAmountPaidFormatted());
 
+                // Check if all items in the transaction have been returned
+                if (areAllItemsReturned(transactionId)) {
+                    // Mark the transaction as fully returned
+                    markTransactionFullyReturned(transactionId);
+                }
+
+                // Reload transactions to update the dropdown
+                loadTransactions();
+
+                // Clear the table and selection
+                tableView.getItems().clear();
+                selectedItems.clear();
+                updateTotalLabel();
+
                 // Return to shopping cart
                 KeranjangUser keranjang = new KeranjangUser(currentUser);
                 keranjang.start(new Stage());
@@ -306,6 +325,50 @@ public class ReturnBarangUser {
             } else {
                 showError("Maaf", "Coba sekali lagi.");
             }
+        }
+    }
+
+    private boolean areAllItemsReturned(String transactionId) {
+        try (Connection conn = db_connect.getConnection()) {
+            // Check if there are any non-returned items left in the transaction
+            String sql = "SELECT COUNT(*) FROM transaction_items " +
+                    "WHERE transaction_id = ? AND (returned = FALSE OR returned IS NULL)";
+
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, transactionId);
+
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        int count = rs.getInt(1);
+                        return count == 0; // If count is 0, all items are returned
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error checking returned items: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
+    private void markTransactionFullyReturned(String transactionId) {
+        try (Connection conn = db_connect.getConnection()) {
+            // Update the transaction to mark it as fully returned
+            String sql = "UPDATE transactions SET fully_returned = TRUE " +
+                    "WHERE transaction_id = ?";
+
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, transactionId);
+                int updated = stmt.executeUpdate();
+
+                if (updated > 0) {
+                    System.out.println("Transaction " + transactionId + " marked as fully returned");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error marking transaction as fully returned: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

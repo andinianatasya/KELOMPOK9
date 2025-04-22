@@ -22,6 +22,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import javafx.scene.Cursor;
+import login.Login;
 
 public class ProdukAdminView {
     private User currentUser;
@@ -104,7 +105,9 @@ public class ProdukAdminView {
 
             ButtonType updateButtonType = new ButtonType("Simpan", ButtonBar.ButtonData.OK_DONE);
             ButtonType deleteButtonType = new ButtonType("Hapus Akun", ButtonBar.ButtonData.LEFT);
-            dialog.getDialogPane().getButtonTypes().addAll(updateButtonType, deleteButtonType, ButtonType.CANCEL);
+            ButtonType logoutButtonType = new ButtonType("Log Out", ButtonBar.ButtonData.OTHER);
+            dialog.getDialogPane().getButtonTypes().addAll(updateButtonType, deleteButtonType, logoutButtonType, ButtonType.CANCEL);
+
             dialog.getDialogPane().setContent(content);
 
             dialog.setResultConverter(dialogButton -> {
@@ -112,7 +115,10 @@ public class ProdukAdminView {
                     return nameField.getText();
                 } else if (dialogButton == deleteButtonType) {
                     return "DELETE";
+                }  else if (dialogButton == logoutButtonType) {
+                    return "LOGOUT";
                 }
+
                 return null;
             });
 
@@ -121,15 +127,27 @@ public class ProdukAdminView {
                     boolean confirmed = confirmDelete();
                     if (confirmed) {
                         deleteUserFromDatabase(currentUser.getId());
-                        stage.close(); // keluar dari aplikasi setelah hapus akun
+                        stage.close();
                     }
+                } else if ("LOGOUT".equals(result)) {
+                    stage.close();
+
+
+                    Stage loginStage = new Stage();
+                    try {
+                        new Login().start(loginStage);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
                 } else if (result != null && !result.trim().isEmpty()) {
                     updateNamaInDatabase(currentUser.getId(), result.trim());
-                    currentUser.setNama(result.trim()); // update di objek lokal
+                    currentUser.setNama(result.trim());
                     Alert alert = new Alert(Alert.AlertType.INFORMATION, "Nama berhasil diperbarui!");
                     alert.showAndWait();
                 }
             });
+
         });
 
         HBox iconContainer = new HBox(10, tambahBtn, aktivitasIcon, userIcon);
@@ -158,6 +176,18 @@ public class ProdukAdminView {
 
         TableColumn<Product, Void> aksiCol = new TableColumn<>("");
         aksiCol.setPrefWidth(100);
+
+        table.setRowFactory(tv -> {
+            TableRow<Product> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 1 && (!row.isEmpty())) {
+                    Product clickedProduct = row.getItem();
+                    showProductDetail(clickedProduct);
+                }
+            });
+            return row;
+        });
+
         aksiCol.setCellFactory(col -> new TableCell<>() {
             private final Button editBtn = new Button();
             private final Button delBtn = new Button();
@@ -643,6 +673,126 @@ public class ProdukAdminView {
         popupStage.setScene(scene);
         popupStage.initModality(Modality.APPLICATION_MODAL);
         popupStage.show();
+    }
+
+    private void showProductDetail(Product product) {
+        Stage popup = new Stage();
+        popup.initModality(Modality.APPLICATION_MODAL);
+        popup.initOwner(stage);
+        popup.setTitle("Detail Produk");
+
+        VBox layout = new VBox(10);
+        layout.setPadding(new Insets(15));
+
+        // Product name as header with larger bold font
+        Label nameLabel = new Label(product.getNama());
+        nameLabel.setStyle("-fx-font-size: 16pt; -fx-font-weight: bold;");
+        layout.setAlignment(Pos.CENTER); // Alignment khusus untuk judul saja
+        layout.getChildren().add(nameLabel);
+
+        // Ukuran scene default (kecil untuk produk sederhana)
+        int sceneWidth = 250;
+        int sceneHeight = 150;
+
+        // Handle different product types
+        if (product.getTipe().equals("Perishable")) {
+            // For perishable products, show expiry date
+            PerishableProduct perishable = (PerishableProduct) product;
+            String expiryDateStr = perishable.getDetail().split(": ")[1];
+            Label kadaluarsaLabel = new Label("Kadaluarsa: " + expiryDateStr);
+            kadaluarsaLabel.setStyle("-fx-font-size: 12pt;");
+
+            VBox infoBox = new VBox(5, kadaluarsaLabel);
+            infoBox.setAlignment(Pos.CENTER);
+            layout.getChildren().add(infoBox);
+
+        } else if (product.getTipe().equals("Digital")) {
+            // For digital products, show vendor and URL with left alignment
+            DigitalProduct digital = (DigitalProduct) product;
+            Label vendorLabel = new Label("Vendor: " + digital.getvendor());
+            vendorLabel.setStyle("-fx-font-size: 12pt;");
+            Label urlLabel = new Label("URL: " + digital.getURL());
+            urlLabel.setStyle("-fx-font-size: 12pt;");
+
+            VBox infoBox = new VBox(5, vendorLabel, urlLabel);
+            infoBox.setAlignment(Pos.CENTER_LEFT); // Align left untuk informasi digital product
+            layout.getChildren().add(infoBox);
+
+            // Digital product perlu ruang lebih lebar untuk URL
+            sceneWidth = 300;
+            sceneHeight = 180;
+
+        } else if (product.getTipe().equals("Bundle")) {
+            // For bundle products, show a table of included products
+            BundleProduct bundle = (BundleProduct) product;
+            Label bundleLabel = new Label("Bundle berisi:");
+            bundleLabel.setStyle("-fx-font-size: 12pt;");
+            layout.getChildren().add(bundleLabel);
+
+            // Create a table for bundle items
+            TableView<Product> bundleTable = new TableView<>();
+            bundleTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+            bundleTable.setPrefHeight(150);
+
+            TableColumn<Product, String> namaCol = new TableColumn<>("Nama");
+            namaCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getNama()));
+
+            TableColumn<Product, String> hargaCol = new TableColumn<>("Harga");
+            hargaCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getHargaFormatted()));
+
+            // Add expiry info for perishable products in the bundle
+            TableColumn<Product, String> expiryCol = new TableColumn<>("Kadaluarsa");
+            expiryCol.setCellValueFactory(data -> {
+                if (data.getValue().getTipe().equals("Perishable")) {
+                    PerishableProduct perishable = (PerishableProduct) data.getValue();
+                    String expiryDate = perishable.getDetail().split(": ")[1];
+                    return new SimpleStringProperty(expiryDate);
+                } else {
+                    return new SimpleStringProperty("-");
+                }
+            });
+
+            // Only add the expiry column if there's at least one perishable product
+            boolean hasPerishable = false;
+            for (Product item : bundle.getIsiBundle()) {
+                if (item.getTipe().equals("Perishable")) {
+                    hasPerishable = true;
+                    break;
+                }
+            }
+
+            bundleTable.getColumns().add(namaCol);
+            bundleTable.getColumns().add(hargaCol);
+            if (hasPerishable) {
+                bundleTable.getColumns().add(expiryCol);
+            }
+
+            // Add bundle items to the table
+            bundleTable.setItems(FXCollections.observableArrayList(bundle.getIsiBundle()));
+            layout.getChildren().add(bundleTable);
+
+            // Bundle product membutuhkan window yang lebih besar
+            sceneWidth = 350;
+            sceneHeight = 300;
+        }
+
+        // Add close button at the bottom
+        Button closeButton = new Button("Tutup");
+        closeButton.setStyle("-fx-padding: 5 20 5 20; -fx-background-color: #3498db; -fx-text-fill: white;");
+        closeButton.setOnAction(e -> popup.close());
+
+        // Spacer to push button to bottom
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        VBox buttonBox = new VBox(closeButton);
+        buttonBox.setAlignment(Pos.CENTER);
+        layout.getChildren().addAll(spacer, buttonBox);
+
+        Scene scene = new Scene(layout, sceneWidth, sceneHeight);
+        popup.setScene(scene);
+        popup.setResizable(false);
+        popup.showAndWait();
     }
 
 }
